@@ -8,6 +8,7 @@ Se arregla error en que los licks del time out contaban para gatillar un evento
 
 2023-05-23
 - Every time a choice is made -> lights off + timeout
+- Use a third sensor as a nosepoke
 
 LIBS:
 
@@ -32,9 +33,12 @@ TODO:
 #define TYPE_DATA   "data"
 #define TYPE_RESP   "response"
 #define N_SENSORS   2
-#define N_LEDS      2
+#define N_LEDS      3
 #define N_BLINKS    3
-#define BLOCK_TIME  20000
+#define BLOCK_TIME  5000
+#define NOSE_POKE_PIN 7
+#define NOSE_POKE   2  // nosepoke is a special sensor
+#define NOSE_POKE_TIME_IN   1000  //  how long the nose should be inside nosepoke
 
 #define DELAY_TEST_LEDS   2000 //2 seg
 #define DELAY_TEST_MOTORS 3000 //3 seg
@@ -61,7 +65,7 @@ const char* json_rx = "{\"cmd\":\"gps\",\"arg\":1}";
 DeserializationError error_rx;
 
 //JSON SEND
-const size_t capacity_tx = JSON_OBJECT_SIZE(8);
+const size_t capacity_tx = JSON_OBJECT_SIZE(9);
 DynamicJsonDocument doc_tx(capacity_tx);
 //PARSE VAR
 const char* cmd;
@@ -70,7 +74,7 @@ int arg = 0;
 /*----------------
     VARIABLES
 ------------------*/
-bool state  = CALIBRATION;
+bool state  = RUN;
 
 uint16_t last_touched    = 0;
 uint16_t current_touched = 0;
@@ -79,10 +83,21 @@ unsigned long licks_counter[]   = {0,0}; // store the total number of licks made
 unsigned long licks_counter_valid[]   = {0,0}; // store the number of licks that are valid
 unsigned long events_counter[]  = {0,0}; // store the number of times that "must" be triggered an event
 unsigned long success_counter[] = {0,0}; // store the numbers of events that really happen
+bool trial_end[]                =  {0, 0};
 bool licks_triggered[]          = {0,0}; // store if the sensor was triggered; 0 not triggered, 1 triggered;
-bool bussy_sensors[]            = {0,0}; // indicate if the sensors is blocked; 0 no blocked, 1 blocked;
-long start_times[]              = {0,0}; // store de duratrion of the blocked time;
+// 0, 1 = spouts
+// 2 = nosepoke
+bool bussy_sensors[]            = {0,0,0}; // indicate if the sensors is blocked; 0 no blocked, 1 blocked;
+// 0, 1 = spouts
+// 2 = nosepoke
+long start_times[]              = {0,0,0}; // store de duratrion of the blocked time;
+// 0, 1 = spouts
+// 2 = nosepoke
 bool sensors_state[]            = {0,0}; // indicates if the sensor is being pressed or not
+bool nosePoke_state             = false;
+unsigned long nose_in_timestamp = 0;
+bool nosePoke_touched                = 1;
+long unsigned int nose_in_var   = 0;
 
 //CAMBIAR ESTA VARIABLE CON LOS SENSORES USADOS {SENSOR_0,SENSOR_1}
 uint8_t active_sensor_index[]   = {0,2}; // save the index of the actual ussed sensors
@@ -118,6 +133,7 @@ void turnAllLeds(bool onoff);
 void setup()
 {
   pinMode(13,OUTPUT);
+  pinMode(NOSE_POKE_PIN, INPUT);
   Serial.begin(115200);
 
   //Inicialize the LEDs
@@ -160,8 +176,20 @@ void loop()
   if(state == RUN)
   {
     readSensor();
+    nose_in_var = 0;
+    if (trial_end[0] || trial_end[1]){
+      bussy_sensors[0] = 1;
+      bussy_sensors[1] = 1;
+      turnAllLeds(0);
+    }
+    else{
+      bussy_sensors[0] = 0;
+      bussy_sensors[1] = 0;
+      turnAllLeds(1);
+    }
     for(int i = 0; i<N_SENSORS;i++)
     {
+
       if(licks_triggered[i])
       {
         if( licks_counter_valid[i] % licks_treshold[i] == 0)
@@ -173,15 +201,16 @@ void loop()
 	    // set time when event is triggered
 	    // set this so both sensor go to block time
 	    // 0 and 1 should be both spouts
-            start_times[0]     = millis();
-            start_times[1]     = millis();
+            start_times[i]     = millis();
 
             probability = random(int(100/events_probability[i]));
             if(!probability)
             {
               success_counter[i]+=1;
+              // trial ends here
+              trial_end[i] = 1;
 	      // turns both leds off
-	      turnAllLeds(0);
+	      //analogWrite(leds_pins[i],0);
 	      // delivers reward
               Motor_array[i]->step(motor_steps, FORWARD, MICROSTEP); // motor ON
               Motor_array[i]->release();
@@ -194,15 +223,23 @@ void loop()
       // because both spouts go to block time at the same time
       // if any of start times is greater than block time
       // then both spout should be available for a new event
-      if( millis() - start_times[i] >  BLOCK_TIME )
+      readNosePoke();
+      //Serial.println(nose_in_var);
+      if(!nosePoke_state)
       {
 	      // sets both spout available to a new event
-        bussy_sensors[0] = 0;
-        bussy_sensors[1] = 0;
-	// turns both lights on
-	turnAllLeds(1);
+        //bussy_sensors[i] = 0;
+        // if choosen spout ends block time the trial re-starts
+        start_times[NOSE_POKE] = millis();
+        nose_in_var = start_times[NOSE_POKE] - nose_in_timestamp;
+        publishSensor(i);
+        //Serial.println(nose_in_var);
+        if(nose_in_var >= NOSE_POKE_TIME_IN){
+          trial_end[i] = 0;
+        }
+	    // turns both lights on
+	     // analogWrite(leds_pins[i],led_power);
       }
-
     }
   }
 }
@@ -225,6 +262,14 @@ void calibration()
     }
   }
   last_touched = current_touched;
+}
+
+void readNosePoke(){
+    nosePoke_state = digitalRead(NOSE_POKE_PIN);
+    if(!nosePoke_state && nosePoke_state != nosePoke_touched){
+      nose_in_timestamp = millis();
+      }
+    nosePoke_touched = nosePoke_state;
 }
 
 void readSensor()
@@ -295,6 +340,7 @@ void publishSensor(int index)
   doc_tx["event"]   = events_counter[index];
   doc_tx["success"] = success_counter[index];
   doc_tx["activity"]  = sensors_state[index];
+  doc_tx["nosepoke"] = nose_in_var;
 
   serializeJson(doc_tx, Serial);
   Serial.println("");
