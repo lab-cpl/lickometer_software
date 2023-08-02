@@ -38,7 +38,7 @@ TODO:
 #define BLOCK_TIME  5000
 #define NOSE_POKE_PIN 7
 #define NOSE_POKE   2  // nosepoke is a special sensor
-#define NOSE_POKE_TIME_IN   1000  //  how long the nose should be inside nosepoke
+#define NOSE_POKE_TIME_IN   250  //  how long the nose should be inside nosepoke
 
 #define DELAY_TEST_LEDS   2000 //2 seg
 #define DELAY_TEST_MOTORS 3000 //3 seg
@@ -98,15 +98,20 @@ bool nosePoke_state             = false;
 unsigned long nose_in_timestamp = 0;
 bool nosePoke_touched                = 1;
 long unsigned int nose_in_var   = 0;
+bool nose_in_var_bool           = false;
 
 //CAMBIAR ESTA VARIABLE CON LOS SENSORES USADOS {SENSOR_0,SENSOR_1}
 uint8_t active_sensor_index[]   = {0,2}; // save the index of the actual ussed sensors
 uint8_t licks_treshold[]        = {5,5}; //
-uint8_t events_probability[]    = {100,100};
+// increasing entropy first 100,100 is the 15 min time gap
+// that is why they are repeated
+uint8_t events_probability[]    = {100,100, 100,100, 100,50, 25,75, 50,50};
+// decreaseing entropy
+//uint8_t events_probability[]    = {100,100, 50,50, 25,75, 100,50, 100,100};
 
 //CAMBIAR ESTA VARIABLE CON LOS LEDS USADOS {LED_0,LED_1}
-uint8_t leds_pins[]             = {3,6};
-uint8_t leds_status[]           = {0,0};
+uint8_t leds_pins[]             = {3,6,10};
+uint8_t leds_status[]           = {0,0,0};
 
 int probability     = 100;
 uint8_t temp_index  = 0;
@@ -118,6 +123,15 @@ long time_last      = 0;
 int led_power     = 10;
 double powerMotor = 0.6;
 int motor_steps   = 12;
+
+// VARIABLES RELACIONADAS A CAMBIAR LA PROBABILIDAD DE LOS SPOUTS
+#define BIN_TIME 900000
+int n_bin = 0;
+int n_bin_last    = 0;
+long time_session  = 0; // only starts after first triggered event, either spout is ok
+long time_current = 0;
+long time_start   = 0;
+long time_last    = 0;
 
 /*----------------
     FUNCTIONS
@@ -175,17 +189,31 @@ void loop()
   }
   if(state == RUN)
   {
+    // detectar en que BIN estamos
+    // the first detected bin is not relevant
+    // calculations are relevant after the first triggered event
+    n_bin = (int)((millis()-time_session)/BIN_TIME); //entrega el bin (0,inf)
+    if (n_bin>4){
+      n_bin= 4;
+      }
     readSensor();
     nose_in_var = 0;
+    nose_in_var_bool = false;
     if (trial_end[0] || trial_end[1]){
       bussy_sensors[0] = 1;
       bussy_sensors[1] = 1;
-      turnAllLeds(0);
+      //turnAllLeds(0);
+      digitalWrite(leds_pins[0], 0);
+      digitalWrite(leds_pins[1], 0);
+      digitalWrite(leds_pins[2], led_power);
     }
     else{
       bussy_sensors[0] = 0;
       bussy_sensors[1] = 0;
-      turnAllLeds(1);
+      //turnAllLeds(1);
+      digitalWrite(leds_pins[0], led_power);
+      digitalWrite(leds_pins[1], led_power);
+      digitalWrite(leds_pins[2], 0);
     }
     for(int i = 0; i<N_SENSORS;i++)
     {
@@ -202,8 +230,17 @@ void loop()
 	    // set this so both sensor go to block time
 	    // 0 and 1 should be both spouts
             start_times[i]     = millis();
+	    if (time_session == 0){
+		    time_session = millis();
+	    }
 
-            probability = random(int(100/events_probability[i]));
+	    // probability move in pairs
+	    // n_bin = 0, index 0 and 1
+	    // n_bin = 1, index 2 and 3
+	    // n_bin = 2, index 4 and 5
+	    // n_bin = 3, index 6 and 7
+	    // n_bin = 4, index 8 and 9
+            probability = random(int(100/events_probability[((n_bin)*2)+i]));
             if(!probability)
             {
               success_counter[i]+=1;
@@ -232,6 +269,7 @@ void loop()
         // if choosen spout ends block time the trial re-starts
         start_times[NOSE_POKE] = millis();
         nose_in_var = start_times[NOSE_POKE] - nose_in_timestamp;
+        nose_in_var_bool = true;
         publishSensor(i);
         //Serial.println(nose_in_var);
         if(nose_in_var >= NOSE_POKE_TIME_IN){
@@ -340,7 +378,7 @@ void publishSensor(int index)
   doc_tx["event"]   = events_counter[index];
   doc_tx["success"] = success_counter[index];
   doc_tx["activity"]  = sensors_state[index];
-  doc_tx["nosepoke"] = nose_in_var;
+  doc_tx["nosepoke"] = nose_in_var_bool;
 
   serializeJson(doc_tx, Serial);
   Serial.println("");
