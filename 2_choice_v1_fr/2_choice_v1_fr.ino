@@ -65,7 +65,7 @@ const char* json_rx = "{\"cmd\":\"gps\",\"arg\":1}";
 DeserializationError error_rx;
 
 //JSON SEND
-const size_t capacity_tx = JSON_OBJECT_SIZE(9);
+const size_t capacity_tx = JSON_OBJECT_SIZE(11);
 DynamicJsonDocument doc_tx(capacity_tx);
 //PARSE VAR
 const char* cmd;
@@ -116,10 +116,6 @@ uint8_t leds_status[]           = {0,0,0};
 int probability     = 100;
 uint8_t temp_index  = 0;
 
-
-long time_start     = 0;
-long time_last      = 0;
-
 int led_power     = 10;
 double powerMotor = 0.6;
 int motor_steps   = 12;
@@ -161,7 +157,7 @@ void setup()
   if (!capacitive_sensor.begin(0x5A))
   {
     Serial.println("MPR121 not found, check wiring?");
-    while (1);
+    //while (1);
   }
   if(DEBUG){Serial.println("MPR121 found!");}
 
@@ -378,7 +374,10 @@ void publishSensor(int index)
   doc_tx["event"]   = events_counter[index];
   doc_tx["success"] = success_counter[index];
   doc_tx["activity"]  = sensors_state[index];
+  //check if python interface script reads this
   doc_tx["nosepoke"] = nose_in_var_bool;
+  doc_tx["probability_pair"] = events_probability[((n_bin)*2)+index];
+  doc_tx["n_bin"] = n_bin;
 
   serializeJson(doc_tx, Serial);
   Serial.println("");
