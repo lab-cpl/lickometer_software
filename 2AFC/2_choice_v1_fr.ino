@@ -38,7 +38,7 @@ TODO:
 #define BLOCK_TIME  5000
 #define NOSE_POKE_PIN 7
 #define NOSE_POKE   2  // nosepoke is a special sensor
-#define NOSE_POKE_TIME_IN   250  //  how long the nose should be inside nosepoke
+#define NOSE_POKE_TIME_IN   50  //  how long the nose should be inside nosepoke
 
 #define DELAY_TEST_LEDS   2000 //2 seg
 #define DELAY_TEST_MOTORS 3000 //3 seg
@@ -105,7 +105,10 @@ uint8_t active_sensor_index[]   = {0,2}; // save the index of the actual ussed s
 uint8_t licks_treshold[]        = {5,5}; //
 // increasing entropy first 100,100 is the 15 min time gap
 // that is why they are repeated
-uint8_t events_probability[]    = {100,100, 100,100, 100,50, 25,75, 50,50};
+//uint8_t events_probability[]    = {100,100, 100,100, 100,50, 25,75, 50,50};
+
+// constant minimal entropy
+uint8_t events_probability[]    = {100,100, 100,100, 100,100, 100,100, 100,100};
 // decreaseing entropy
 //uint8_t events_probability[]    = {100,100, 50,50, 25,75, 100,50, 100,100};
 
@@ -118,6 +121,7 @@ uint8_t temp_index  = 0;
 
 int led_power     = 10;
 double powerMotor = 0.6;
+// important variable 12 is default
 int motor_steps   = 12;
 
 // VARIABLES RELACIONADAS A CAMBIAR LA PROBABILIDAD DE LOS SPOUTS
@@ -157,7 +161,7 @@ void setup()
   if (!capacitive_sensor.begin(0x5A))
   {
     Serial.println("MPR121 not found, check wiring?");
-    //while (1);
+    while (1);
   }
   if(DEBUG){Serial.println("MPR121 found!");}
 
@@ -242,6 +246,8 @@ void loop()
               success_counter[i]+=1;
               // trial ends here
               trial_end[i] = 1;
+              //digitalWrite(leds_pins[0], 0);
+              //digitalWrite(leds_pins[1], 0);
 	      // turns both leds off
 	      //analogWrite(leds_pins[i],0);
 	      // delivers reward
@@ -375,9 +381,9 @@ void publishSensor(int index)
   doc_tx["success"] = success_counter[index];
   doc_tx["activity"]  = sensors_state[index];
   //check if python interface script reads this
-  doc_tx["nosepoke"] = nose_in_var_bool;
-  doc_tx["probability_pair"] = events_probability[((n_bin)*2)+index];
-  doc_tx["n_bin"] = n_bin;
+  //doc_tx["nosepoke"] = nose_in_var_bool;
+  //doc_tx["probability_pair"] = events_probability[((n_bin)*2)+index];
+  //doc_tx["n_bin"] = n_bin;
 
   serializeJson(doc_tx, Serial);
   Serial.println("");
