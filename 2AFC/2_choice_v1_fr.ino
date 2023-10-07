@@ -272,7 +272,8 @@ void loop()
         start_times[NOSE_POKE] = millis();
         nose_in_var = start_times[NOSE_POKE] - nose_in_timestamp;
         nose_in_var_bool = true;
-        publishSensor(i);
+	// publish 9 as nosepoke
+        publishSensor(9);
         //Serial.println(nose_in_var);
         if(nose_in_var >= NOSE_POKE_TIME_IN){
           trial_end[i] = 0;
@@ -372,14 +373,27 @@ void turnAllLeds(bool onoff)
 
 void publishSensor(int index)
 {
-  doc_tx["id"]      = ID;
-  doc_tx["type"]    = state;
-  doc_tx["sensor"]  = index;
-  doc_tx["time"]    = millis();
-  doc_tx["lick"]    = licks_counter[index];
-  doc_tx["event"]   = events_counter[index];
-  doc_tx["success"] = success_counter[index];
-  doc_tx["activity"]  = sensors_state[index];
+	// if reading come from nosepoke
+	if(index == 9){
+	  doc_tx["id"]      = ID;
+	  doc_tx["type"]    = state;
+	  doc_tx["sensor"]  = index;
+	  doc_tx["time"]    = millis();
+	  doc_tx["lick"]    = 0;
+	  doc_tx["event"]   = 0;
+	  doc_tx["success"] = 0;
+	  doc_tx["activity"]  = 0;
+	}
+	else{
+	  doc_tx["id"]      = ID;
+	  doc_tx["type"]    = state;
+	  doc_tx["sensor"]  = index;
+	  doc_tx["time"]    = millis();
+	  doc_tx["lick"]    = licks_counter[index];
+	  doc_tx["event"]   = events_counter[index];
+	  doc_tx["success"] = success_counter[index];
+	  doc_tx["activity"]  = sensors_state[index];
+	}
   //check if python interface script reads this
   //doc_tx["nosepoke"] = nose_in_var_bool;
   //doc_tx["probability_pair"] = events_probability[((n_bin)*2)+index];
