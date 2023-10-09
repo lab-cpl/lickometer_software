@@ -377,11 +377,11 @@ void publishSensor(int index)
 	if(index == 9){
 	  doc_tx["id"]      = ID;
 	  doc_tx["type"]    = state;
-	  doc_tx["sensor"]  = index;
+	  doc_tx["sensor"]  = 0;
 	  doc_tx["time"]    = millis();
-	  doc_tx["lick"]    = 0;
-	  doc_tx["event"]   = 0;
-	  doc_tx["success"] = 0;
+	  doc_tx["lick"]    = -1;
+	  doc_tx["event"]   = trial_end[0];
+	  doc_tx["success"] = trial_end[1];
 	  doc_tx["activity"]  = 0;
 	}
 	else{
