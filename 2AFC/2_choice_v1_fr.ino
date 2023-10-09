@@ -122,7 +122,7 @@ uint8_t temp_index  = 0;
 int led_power     = 10;
 double powerMotor = 0.6;
 // important variable 12 is default
-int motor_steps   = 12;
+int motor_steps   = 36;
 
 // VARIABLES RELACIONADAS A CAMBIAR LA PROBABILIDAD DE LOS SPOUTS
 #define BIN_TIME 900000
