@@ -251,6 +251,7 @@ void loop()
 	      // turns both leds off
 	      //analogWrite(leds_pins[i],0);
 	      // delivers reward
+	      // note this is code blocking
               Motor_array[i]->step(motor_steps, FORWARD, MICROSTEP); // motor ON
               Motor_array[i]->release();
             }
