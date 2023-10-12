@@ -203,17 +203,17 @@ void loop()
       bussy_sensors[0] = 1;
       bussy_sensors[1] = 1;
       //turnAllLeds(0);
-      digitalWrite(leds_pins[0], 0);
-      digitalWrite(leds_pins[1], 0);
-      digitalWrite(leds_pins[2], led_power);
+      analogWrite(leds_pins[0], 0);
+      analogWrite(leds_pins[1], 0);
+      analogWrite(leds_pins[2], led_power);
     }
     else{
       bussy_sensors[0] = 0;
       bussy_sensors[1] = 0;
       //turnAllLeds(1);
-      digitalWrite(leds_pins[0], led_power);
-      digitalWrite(leds_pins[1], led_power);
-      digitalWrite(leds_pins[2], 0);
+      analogWrite(leds_pins[0], led_power);
+      analogWrite(leds_pins[1], led_power);
+      analogWrite(leds_pins[2], 0);
     }
     for(int i = 0; i<N_SENSORS;i++)
     {
