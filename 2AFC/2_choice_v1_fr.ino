@@ -10,6 +10,9 @@ Se arregla error en que los licks del time out contaban para gatillar un evento
 - Every time a choice is made -> lights off + timeout
 - Use a third sensor as a nosepoke
 
+2024-01-09
+- changes so any protocol could be used in any of the spouts
+
 LIBS:
 
 TODO:
@@ -32,13 +35,13 @@ TODO:
 #define RESET       asm("jmp 0x0000")
 #define TYPE_DATA   "data"
 #define TYPE_RESP   "response"
-#define N_SENSORS   2
+#define N_SENSORS   2 // spout 0, spout 2, nosepoke is not on mpr
 #define N_LEDS      3
 #define N_BLINKS    3
 #define BLOCK_TIME  5000
 #define NOSE_POKE_PIN 7
 #define NOSE_POKE   2  // nosepoke is a special sensor
-#define NOSE_POKE_TIME_IN   50  //  how long the nose should be inside nosepoke
+#define NOSE_POKE_TIME_IN   50  //  50 ms to triggers an election trial
 
 #define DELAY_TEST_LEDS   2000 //2 seg
 #define DELAY_TEST_MOTORS 3000 //3 seg
@@ -101,8 +104,32 @@ long unsigned int nose_in_var   = 0;
 bool nose_in_var_bool           = false;
 
 //CAMBIAR ESTA VARIABLE CON LOS SENSORES USADOS {SENSOR_0,SENSOR_1}
+// nosepoke is not here because is not part of the mpr
 uint8_t active_sensor_index[]   = {0,2}; // save the index of the actual ussed sensors
-uint8_t licks_treshold[]        = {5,5}; //
+uint8_t licks_threshold[]        = {5,5}; //
+int licks_pr[180]              = {5, 7, 11, 17, 25, 35, 47, 61,
+                                  77, 95, 115, 137, 161, 187, 215, 245,
+                                  277, 311, 347, 385, 425, 467, 511, 557,
+                                  605, 655, 707, 761, 817, 875, 935, 997,
+                                  1061, 1127, 1195, 1265, 1337, 1411, 1487, 1565,
+                                  1645, 1727, 1811, 1897, 1985, 2075, 2167, 2261,
+                                  2357, 2455, 2555, 2657, 2761, 2867, 2975, 3085,
+                                  3197, 3311, 3427, 3545, 3665, 3787, 3911, 4037,
+                                  4165, 4295, 4427, 4561, 4697, 4835, 4975, 5117,
+                                  5261, 5407, 5555, 5705, 5857, 6011, 6167, 6325,
+                                  6485, 6647, 6811, 6977, 7145, 7315, 7487, 7661,
+                                  7837, 8015, 8195, 8377, 8561, 8747, 8935, 9125,
+                                  9317, 9511, 9707, 9905, 10105, 10307, 10511, 10717,
+                                  10925, 11135, 11347, 11561, 11777, 11995, 12215, 12437,
+                                  12661, 12887, 13115, 13345, 13577, 13811, 14047, 14285,
+                                  16517, 16775, 17035, 17297, 17561, 17827, 18095, 18365,
+                                  18637, 18911, 19187, 19465, 19745, 20027, 20311, 20597,
+                                  20885, 21175, 21467, 21761, 22057, 22355, 22655, 22957,
+                                  23261, 23567, 23875, 24185, 24497, 24811, 25127, 25445,
+                                  25765, 26087, 26411, 26737, 27065, 27395, 27727, 28061,
+                                  28397, 28735, 29075, 29417, 29761, 30107, 30455, 30805,
+                                  31157, 31511, 31867, 32225
+                                 };
 // increasing entropy first 100,100 is the 15 min time gap
 // that is why they are repeated
 //uint8_t events_probability[]    = {100,100, 100,100, 100,50, 25,75, 50,50};
@@ -199,6 +226,8 @@ void loop()
     readSensor();
     nose_in_var = 0;
     nose_in_var_bool = false;
+    // if an event is triggered turn of spout leds
+    // and turn on nosepoke led for next trial
     if (trial_end[0] || trial_end[1]){
       bussy_sensors[0] = 1;
       bussy_sensors[1] = 1;
@@ -217,15 +246,18 @@ void loop()
     }
     for(int i = 0; i<N_SENSORS;i++)
     {
-
       if(licks_triggered[i])
       {
-        if( licks_counter_valid[i] % licks_treshold[i] == 0)
+        if( licks_counter_valid[i] % licks_threshold[i] == 0)
         {
           if(!bussy_sensors[i])
           {
             events_counter[i] += 1;
             bussy_sensors[i]   = 1;
+	    // if this is a PR protocol then licks_threshold should go up 
+	    // for the selected spout
+	    licks_threshold[i] = licks_pr[events_counter[i]];
+	    licks_counter_valid[i] = 0;
 	    // set time when event is triggered
 	    // set this so both sensor go to block time
 	    // 0 and 1 should be both spouts
@@ -233,7 +265,6 @@ void loop()
 	    if (time_session == 0){
 		    time_session = millis();
 	    }
-
 	    // probability move in pairs
 	    // n_bin = 0, index 0 and 1
 	    // n_bin = 1, index 2 and 3
@@ -262,7 +293,7 @@ void loop()
       }
       // because both spouts go to block time at the same time
       // if any of start times is greater than block time
-      // then both spout should be available for a new event
+      // then both spouts should be available for a new event
       readNosePoke();
       //Serial.println(nose_in_var);
       if(!nosePoke_state)
@@ -273,12 +304,14 @@ void loop()
         start_times[NOSE_POKE] = millis();
         nose_in_var = start_times[NOSE_POKE] - nose_in_timestamp;
         nose_in_var_bool = true;
-	// publish 9 as nosepoke
-        publishSensor(9);
         //Serial.println(nose_in_var);
         if(nose_in_var >= NOSE_POKE_TIME_IN){
-          trial_end[i] = 0;
+		// starts the new trial
+          trial_end[0] = 0;
+          trial_end[1] = 0;
         }
+	// publish 9 as nosepoke
+	publishSensor(9);
 	    // turns both lights on
 	     // analogWrite(leds_pins[i],led_power);
       }
@@ -374,15 +407,15 @@ void turnAllLeds(bool onoff)
 
 void publishSensor(int index)
 {
-	// if reading come from nosepoke
+	// if reading comes from nosepoke
 	if(index == 9){
 	  doc_tx["id"]      = ID;
 	  doc_tx["type"]    = state;
-	  doc_tx["sensor"]  = 0;
+	  doc_tx["sensor"]  = 2;
 	  doc_tx["time"]    = millis();
 	  doc_tx["lick"]    = -1;
-	  doc_tx["event"]   = trial_end[0];
-	  doc_tx["success"] = trial_end[1];
+	  doc_tx["event"]   = trial_end[0] == trial_end[1]; // 1 = new valid trial
+	  doc_tx["success"] = nose_in_var; // if event == 1, this is the required time inside nosepoke to trigger next trial
 	  doc_tx["activity"]  = 0;
 	}
 	else{
