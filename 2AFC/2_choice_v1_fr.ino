@@ -107,6 +107,7 @@ bool nose_in_var_bool           = false;
 // nosepoke is not here because is not part of the mpr
 uint8_t active_sensor_index[]   = {0,2}; // save the index of the actual ussed sensors
 uint8_t licks_threshold[]        = {5,5}; //
+uint8_t is_pr[]        = {1,1}; // 1 = spout is pr protocol; 2 = spout is fr5 protocol
 int licks_pr[180]              = {5, 7, 11, 17, 25, 35, 47, 61,
                                   77, 95, 115, 137, 161, 187, 215, 245,
                                   277, 311, 347, 385, 425, 467, 511, 557,
@@ -134,10 +135,12 @@ int licks_pr[180]              = {5, 7, 11, 17, 25, 35, 47, 61,
 // that is why they are repeated
 //uint8_t events_probability[]    = {100,100, 100,100, 100,50, 25,75, 50,50};
 
-// constant minimal entropy
+// set delivery probability in each bin, if you dont want to
+// use this, just set all to 100
+// this read left/right probability per bin
+// so first two number are left/right probability for bin 1
+// numbers 3 and 4 are left/right probability for bin 2, and so on
 uint8_t events_probability[]    = {100,100, 100,100, 100,100, 100,100, 100,100};
-// decreaseing entropy
-//uint8_t events_probability[]    = {100,100, 50,50, 25,75, 100,50, 100,100};
 
 //CAMBIAR ESTA VARIABLE CON LOS LEDS USADOS {LED_0,LED_1}
 uint8_t leds_pins[]             = {3,6,10};
@@ -177,7 +180,7 @@ void setup()
   pinMode(NOSE_POKE_PIN, INPUT);
   Serial.begin(115200);
 
-  //Inicialize the LEDs
+  //Initialize the LEDs
   for(int i = 0; i < N_LEDS ;i++)
   {
     pinMode(leds_pins[i],OUTPUT);
@@ -256,8 +259,11 @@ void loop()
             bussy_sensors[i]   = 1;
 	    // if this is a PR protocol then licks_threshold should go up 
 	    // for the selected spout
-	    licks_threshold[i] = licks_pr[events_counter[i]];
-	    licks_counter_valid[i] = 0;
+	    // licks counter valid are added, this is the same as to reset
+	    // the valid licks counter
+	    if (is_pr[i]){
+		    licks_threshold[i] = licks_pr[events_counter[i]] + licks_counter_valid[i];
+	    }
 	    // set time when event is triggered
 	    // set this so both sensor go to block time
 	    // 0 and 1 should be both spouts
