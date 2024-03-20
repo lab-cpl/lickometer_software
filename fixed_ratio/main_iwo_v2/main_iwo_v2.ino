@@ -283,8 +283,16 @@ void blinkTubeLights(int Delay, boolean flag)
 
 void turnAllLeds(bool onoff)
 {
-  if(onoff){ for(int i = 0; i < N_LEDS ; i++){analogWrite(leds_pins[i],led_power);}}
-  else{      for(int i = 0; i < N_LEDS ; i++){digitalWrite(leds_pins[i],0);}}
+  for (uint8_t i=0; i < N_SENSORS; i++){
+	if (i == sucrose_spout)
+	{
+		brightness = led_power * ledPowerMod[0];
+	}
+	else{
+		brightness = led_power * ledPowerMod[1];
+	}
+        analogWrite(leds_pins[i], brightness);
+  }
 }
 
 void publishSensor(int index)
