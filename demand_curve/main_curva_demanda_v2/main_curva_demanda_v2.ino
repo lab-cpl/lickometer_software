@@ -67,7 +67,7 @@ int arg = 0;
 /*----------------
     VARIABLES
   ------------------*/
-bool state  = RUN;
+bool state  = CALIBRATION;
 
 uint16_t last_touched    = 0;
 uint16_t current_touched = 0;
@@ -96,7 +96,7 @@ uint8_t events_probability[]    = {100, 100};
 // ESTA VARIABLE SE PONE PARA INDICAR EN QUE SPOUT ESTA LA SACAROSA
 // 0 sucrose_spout indica el puerto 0 del licometro
 // 1 sucrose_spout indica el puerte 2 del licometro
-sucrose_spout = 0;
+int sucrose_spout = 0;
 
 //CAMBIAR ESTA VARIABLE CON LOS LEDS USADOS {LED_0,LED_1}
 uint8_t leds_pins[]             = {3, 6};
@@ -113,7 +113,7 @@ long time_start     = 0;
 long time_last      = 0;
 
 int led_power     = 10;
-double ledPowerMod = {1.0, 0.25};
+double ledPowerMod[] = {1.0, 0.1};
 int brightness;
 double powerMotor = 0.6;
 int motor_steps   = 12;
