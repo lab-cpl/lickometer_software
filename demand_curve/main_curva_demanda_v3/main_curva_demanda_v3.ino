@@ -35,7 +35,8 @@
 #define BIN_TIME    600000 //tamaño de los bins de tiempo (1 min= 60000ms)
 
 // Variable related to pause function
-ezButton toggleSwitch(); // set the pin to use
+#define BUTTON_PIN      11
+ezButton toggleSwitch(BUTTON_PIN); // set the pin to use
 bool PAUSE                = false;
 unsigned long P_START	  = 0;
 unsigned long P_TOTAL     = 0;
@@ -75,7 +76,7 @@ int arg = 0;
 /*----------------
     VARIABLES
   ------------------*/
-bool state  = CALIBRATION;
+bool state  = RUN;
 
 uint16_t last_touched    = 0;
 uint16_t current_touched = 0;
@@ -140,7 +141,7 @@ void turnAllLeds(bool onoff);
 void setup()
 {
   pinMode(13, OUTPUT);
-  toggleSwitch.setDebounceTime(50); // debounce for on/off switch
+  toggleSwitch.setDebounceTime(100); // debounce for on/off switch
   Serial.begin(115200);
 
   //Inicialize the LEDs
@@ -189,26 +190,29 @@ void loop()
     // Following chunks deal with PAUSE
 
     // check toggle switch
+    toggleSwitch.loop();
     int switchState = toggleSwitch.getState();
     if (switchState == HIGH){
       PAUSE = false;
     }
-    else{
+    else {
       PAUSE = true;
     }
 
-    if (PAUSE == 1){
+    if (PAUSE == true){
+      //Serial.println(millis() - (P_TOTAL + P_CURRENT) - time_session );
+      pauseLights();
       if (P_START == 0){ // evaluates only once
-	P_START = millis();
+	      P_START = millis();
       }
-      P_CURRENT = millis() - P_START // compute the length of the pause
+      P_CURRENT = millis() - P_START; // compute the length of the pause
     }
-    if (PAUSE == 0){
+    if (PAUSE == false){
       if (P_START != 0){ // when coming from a previuos pause
-	P_TOTAL = P_TOTAL + P_CURRENT; // total paused length
-	publishPause(); // before reseting the p_current send the length of the previous pause
-	P_START = 0; // reset p_start
-	P_CURRENT = 0; // reset p_current
+      	P_TOTAL = P_TOTAL + P_CURRENT; // total paused length
+      	publishPause(); // before reseting the p_current send the length of the previous pause
+      	P_START = 0; // reset p_start
+      	P_CURRENT = 0; // reset p_current
       }
     }
     // detectar en que BIN estamos
@@ -218,7 +222,10 @@ void loop()
     if (n_bin>6){
       n_bin= 6;
       }
-    readSensor();
+      // only read sensor when there is no pause
+      if (PAUSE == false){
+        readSensor();
+      }
     for (int i = 0; i < N_SENSORS; i++)
     {
       if (i == pr_sensor) {
@@ -248,7 +255,9 @@ void loop()
             }
           }
         }
-        publishSensor(i);
+        if (PAUSE == false){
+          publishSensor(i);
+        }
         licks_triggered[i] = 0;
       }
       if ( millis() - start_times[i] >  BLOCK_TIME )
@@ -324,6 +333,17 @@ void readSensor()
   last_touched = current_touched;
 }
 
+void pauseLights()
+{
+  for (int i = 0; i < N_LEDS; i++)
+  {
+    analogWrite(leds_pins[i], 0);
+    delay(25);
+    analogWrite(leds_pins[i], 25);
+    delay(25);
+  }
+}
+
 void blinkTubeLights(int Delay, boolean flag)
 {
 
@@ -387,8 +407,8 @@ void publishSensor(int index)
 // -1 in all columns means there was a pause
 void publishPause()
 {
-  doc_tx["id"]      = -1;
-  doc_tx["type"]    = -1;
+  doc_tx["id"]      = "PAUSE";
+  doc_tx["type"]    = state;
   doc_tx["sensor"]  = -1;
   doc_tx["time"]    = P_CURRENT; // Length of the pause in milliseconds
   doc_tx["lick"]    = -1;
