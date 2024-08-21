@@ -99,7 +99,7 @@ uint8_t pr_sensor = 1; // sensor number with progressive ratio 0 = 0; 1 = 2 (sen
 
 
 int licks_treshold[]        = {5, 5}; //
-int licks_pr[7]              = {5, 5, 10, 20, 40, 80, 120}; //number of licks required each bin. Last value is repeated so comparisons can be made.
+int licks_pr[6]              = {5, 10, 20, 40, 80, 120}; //number of licks required each bin. Last value is repeated so comparisons can be made.
 uint8_t events_probability[]    = {100, 100};
 
 // ESTA VARIABLE SE PONE PARA INDICAR EN QUE SPOUT ESTA LA SACAROSA
