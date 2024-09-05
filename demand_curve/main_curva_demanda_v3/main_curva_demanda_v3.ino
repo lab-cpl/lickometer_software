@@ -219,8 +219,8 @@ void loop()
     // note that when is UNPAUSED P_CURRENT = 0
     // when is paused P_CURRENT updates constantly
     n_bin = (int)(( (millis() - (P_TOTAL + P_CURRENT)) - time_session)/BIN_TIME); //entrega el bin (0,inf)
-    if (n_bin>6){
-      n_bin= 6;
+    if (n_bin>5){
+      n_bin= 5;
       }
       // only read sensor when there is no pause
       if (PAUSE == false){
