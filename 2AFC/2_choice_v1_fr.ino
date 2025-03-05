@@ -107,7 +107,7 @@ bool nose_in_var_bool           = false;
 // nosepoke is not here because is not part of the mpr
 uint8_t active_sensor_index[]   = {0,2}; // save the index of the actual ussed sensors
 uint8_t licks_threshold[]        = {5,5}; //
-uint8_t is_pr[]        = {1,1}; // 1 = spout is pr protocol; 2 = spout is fr5 protocol
+uint8_t is_pr[]        = {0,0}; // 1 = spout is pr protocol; 0 = spout is fr5 protocol
 int licks_pr[180]              = {5, 7, 11, 17, 25, 35, 47, 61,
                                   77, 95, 115, 137, 161, 187, 215, 245,
                                   277, 311, 347, 385, 425, 467, 511, 557,
